@@ -1,0 +1,15 @@
+bin/puppet-tidy.pl
+COPYING
+lib/Puppet/Tidy.pm
+Makefile.PL
+MANIFEST			This list of files
+META.yml
+Puppet-Tidy-0.1.tar.gz
+README
+t/1_load.t
+t/2_whitespace.t
+t/3_title.t
+t/4_comments.t
+t/5_modes.t
+t/6_resources.t
+TODO
