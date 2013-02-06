@@ -1,5 +1,5 @@
 # Copyright (c) 2012 Jasper Lievisse Adriaanse <jasper@mtier.org>
-# Copyright (c) 2012 M:tier Ltd.
+# Copyright (c) 2012-2013 M:tier Ltd.
 #
 # Permission to use, copy, modify, and distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -26,7 +26,7 @@ use vars qw(@ISA @EXPORT $VERSION);
 @ISA    = qw( Exporter );
 @EXPORT = qw( &puppettidy );
 
-$VERSION = '0.1';
+$VERSION = '0.2';
 
 my %config = (
     output_type => 'file',
@@ -34,6 +34,7 @@ my %config = (
     output_stream => undef,
     input_files => undef,
     input_stream => undef,
+    validate => 0,
 );
 
 sub puppettidy(%){
@@ -81,6 +82,7 @@ sub puppettidy(%){
 	quotes_title(\@input);
 	quotes_attribute(\@input);
 	handle_modes(\@input);
+	quoted_booleans(\@input);
 
 	if ($config{'output_type'} eq "file") {
 	    open(OF, ">$file.tdy") or die("Cannot open $file.tdy for writing: $!");
@@ -89,6 +91,7 @@ sub puppettidy(%){
 		print OF $line;
 	    }
 	    close(OF);
+	    pp_validate("$file.tdy");
 	} else {
 	    @{$config{'output_stream'}} = @input;
 	}
@@ -99,7 +102,8 @@ sub usage()
 {
     print STDERR << "EOF";
 Puppet::Tidy $VERSION
-usage: $0 [-h] [file ...]
+usage: $0 [-ch] [file ...]
+	-c      : Check/validate the output with "puppet parser validate".
 	-h	: Show this help message.
 EOF
     exit 1;
@@ -110,9 +114,19 @@ sub parse_options(@)
     require Getopt::Std;
 
     my %opt;
-    Getopt::Std::getopts('h', \%opt);
+    Getopt::Std::getopts('ch', \%opt);
 
     usage() if defined($opt{h}) or (@ARGV < 1);
+
+    if (defined($opt{c})) {
+	# Make sure puppet is installed
+	unless (grep { -x "$_/puppet"}split /:/,$ENV{PATH}) {
+	    print STDERR "Puppet is not installed or cannot be run. Make sure it's in your \$PATH.\n";
+	    exit 127;
+	}
+
+	$config{'validate'} = 1;
+    }
 
     # Check if input files are readable at all up front.
     foreach my $f (@ARGV) {
@@ -126,6 +140,16 @@ sub parse_options(@)
     }
 }
 
+# Check the output of Puppet::Tidy with "puppet parser validate".
+sub pp_validate($)
+{
+    my $file = shift;
+
+    open(PP, "puppet parser validate $file |") or
+	die("Failed to validate manifest: $!\n");
+    close(PP);
+}
+
 # Expand literal tabs to two spaces
 sub expand_tabs(@)
 {
@@ -135,7 +159,7 @@ sub expand_tabs(@)
     @$input = Text::Tabs::expand(@$input);
 }
 
-# remove trailing whitespace
+# Remove trailing whitespace.
 sub trailing_whitespace(@)
 {
     my $input = shift;
@@ -145,21 +169,28 @@ sub trailing_whitespace(@)
     }
 }
 
-# quoted strings containing only a variable shouldn't be quoted
+# Wuoted strings containing only a variable shouldn't be quoted, also
+# single quoted strings containing a variable must be double quoted.
 sub variable_string(@)
 {
     my $input = shift;
 
     foreach my $line (@$input)
     {
+	# Skip commented lines.
 	next if (($line eq "\n") or ($line =~ m/^#/));
+
+	# Remove double quotes around a standalone variable
 	$line =~ s/"\$\{(.*?)\}"/\$\{$1\}/g;
 	$line =~ s/"\$(.*?)"/\$$1/g;
+
+	# Remove single quotes around a standalone variable
+	$line =~ s/\x27\$(.*?)\x27/\$$1/g;
     }
 }
 
-# fix double quotes when used when references resources (File, Group, etc).
-# variables were already removed in the previous step so we can't have
+# Gix double quotes when used when references resources (File, Group, etc).
+# Bariables were already removed in the previous step so we can't have
 # a Package["$pkg"] here anymore.
 sub quotes_resource_ref_type(@)
 {
@@ -183,6 +214,8 @@ sub quotes_title(@)
     foreach my $line (@$input) {
 	next if $line =~ m/\s*path/; # XXX: Tighten regexps below and remove me
 	next if $line =~ m/\s*command/;  # XXX: Tighten regexps below and remove me
+	next if ($line =~ m/\:\:/); # XXX: Skip lines with qualified variables
+
 	# Strings with a variable should be double quoted, but care
 	# must be taken if it's alse single quoted which is wrong anyway.
 	if ($line =~ m/\$.*?:(\s*|$)/) {
@@ -190,18 +223,18 @@ sub quotes_title(@)
 	    next if $line =~ s/(\$\w+)/"$1"/g;
 	}
 	$line =~ s/"(.*?)":/\x27$1\x27:/g; # Double to single quoted
-	$line =~ s/(\w+):/\x27$1\x27:/g; # Bare word to single quoted
+	$line =~ s/(?!['"])(\w+):(?!.+['"]+)/\x27$1\x27:/g; # Bare word to single quoted
     }
 }
 
-# certain attributes should be single quoted, unless it is, or contains
+# Certain attributes should be single quoted, unless it is, or contains
 # a variable.
 sub quotes_attribute(@)
 {
     my $input = shift;
     my @attributes = qw(mode path); # XXX: non-exhaustive list
 
-    # "bare" to single quoted with no variables
+    # "Bare" to single quoted with no variables.
     foreach my $line (@$input) {
 	next if $line =~ m/\$/;
 	foreach my $attr (@attributes)
@@ -210,7 +243,7 @@ sub quotes_attribute(@)
 	}
     }
 
-    # double quoted to single quoted with no variables
+    # Double quoted to single quoted with no variables.
     foreach my $line (@$input) {
 	next unless $line =~ m/=\> "/;
 	next if $line =~ m/\$/;
@@ -220,7 +253,7 @@ sub quotes_attribute(@)
 	}
     }
 
-    # variables should be double quoted for string interpolation,
+    # Variables should be double quoted for string interpolation,
     # which won't be done for at least mode since it's fully nummeric.
     foreach my $line (@$input) {
 	next unless (($line =~ m/=\> '/) and ($line =~ m/\$/));
@@ -252,8 +285,30 @@ sub commenting(@)
 
     foreach my $line (@$input)
     {
-	$line =~ s,//,#,; # C++ style
+	$line =~ s,(?!['"].+)//(?!.+['"]),#,; # C++ style
 	$line =~ s,/\*(.*?)(\s+)\*/,#$1,; # C style
+    }
+}
+
+# Insert a warning regarding quoted booleans. The lines aren't actually
+# changed since this will change the meaning of the statement, so instead
+# we just insert an XXX.
+sub quoted_booleans(@)
+{
+    my $input = shift;
+
+    foreach my $line (@$input)
+    {
+	next unless ($line =~ /(\x27|\x22)(false|true)(\x27|\x22)/);
+
+	if ($line =~ /false/) {
+	    $line =~ s/\R//g;
+	    $line = $line . " # XXX: Quoted boolean encountered.\n";
+	}
+
+	if ($line =~ /true/) {
+	    $line =~ s/(\x22|\x27)true(\x22|\x27)/true/g;
+	}
     }
 }
 
@@ -326,6 +381,13 @@ Currently the following checks are implemented:
 
     Although Puppet supports C (/**/) and C++ (//) style comments, it's
     advised to use regular Puppet comments which use a pound sign (#).
+
+=head2 quoted_booleans
+
+    Booleans mustn't be quoted, since this means they're not nil, and will
+    thus evaluate to true. These errors are not fixed by Puppet::Tidy since
+    changing 'false' to true actually changing the meaning of a statement.
+    Instead, a warning is inserted into the file.
 
 =head1 LICENSE
 

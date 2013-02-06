@@ -15,7 +15,7 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "hard tabs");
+is_deeply(@output, @should_be_output, "hard tabs");
 
 ###
 # Some trailing whitespace/tabs
@@ -25,7 +25,7 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "Trailing whitespace");
+is_deeply(@output, @should_be_output, "Trailing whitespace");
 
 ###
 # Mixing tabs and regular spaces in front of a line

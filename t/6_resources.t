@@ -15,13 +15,13 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "double to single quotes");
+is_deeply(@output, @should_be_output, "double to single quotes");
 
 ###
 # Double quotes to single quotes.
 ###
 @should_be_output = << 'EOF';
-  Exec["$reboot"]
+  Exec[$reboot]
 EOF
 
 $source = << 'EOF';
@@ -29,13 +29,13 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "single quotes to double quotes");
+is_deeply(@output, @should_be_output, "single quotes to double quotes");
 
 ###
 # Standard resource type test.
 ###
 @should_be_output = << 'EOF';
-  Exec['reboot']
+  Exec[$reboot]
 EOF
 
 $source = << 'EOF';
@@ -43,13 +43,13 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "Handle standard resource types");
+is_deeply(@output, @should_be_output, "Handle standard resource types");
 
 ###
 # Non-standard resource type test.
 ###
 @should_be_output = << 'EOF';
-    Host["localhost"]
+  Host['localhost']
 EOF
 
 $source = << 'EOF';
@@ -57,4 +57,4 @@ $source = << 'EOF';
 EOF
 
 Puppet::Tidy::puppettidy(source => $source, destination => \@output);
-is(@output, @should_be_output, "Handle non-standard resource types");
+is_deeply(@output, @should_be_output, "Handle non-standard resource types");
