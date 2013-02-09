@@ -26,7 +26,7 @@ use vars qw(@ISA @EXPORT $VERSION);
 @ISA    = qw( Exporter );
 @EXPORT = qw( &puppettidy );
 
-$VERSION = '0.2.1';
+$VERSION = '0.3';
 
 my %config = (
     output_type => 'file',

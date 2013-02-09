@@ -1,4 +1,4 @@
-0.2.1 2013-02-09
+0.3 2013-02-09
   - Fix incompatability with Perl < 5.10.0 due lack of \R
   - Add a Changes file.
 
@@ -11,5 +11,4 @@
   - Improved test cases.
 
 0.1  2012-12-10
-
   - Initial release of Puppet::Tidy.
