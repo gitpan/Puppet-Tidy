@@ -26,7 +26,7 @@ use vars qw(@ISA @EXPORT $VERSION);
 @ISA    = qw( Exporter );
 @EXPORT = qw( &puppettidy );
 
-$VERSION = '0.2';
+$VERSION = '0.2.1';
 
 my %config = (
     output_type => 'file',
@@ -302,7 +302,7 @@ sub quoted_booleans(@)
 	next unless ($line =~ /(\x27|\x22)(false|true)(\x27|\x22)/);
 
 	if ($line =~ /false/) {
-	    $line =~ s/\R//g;
+	    ($] < 5.010000) ? $line =~ s/(?>\x0D\x0A|\v)//g : $line =~ s/\R//g;
 	    $line = $line . " # XXX: Quoted boolean encountered.\n";
 	}
 

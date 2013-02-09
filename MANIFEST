@@ -1,5 +1,6 @@
 bin/puppet-tidy.pl
 changelog.sh
+Changes
 COPYING
 lib/Puppet/Tidy.pm
 Makefile.PL
