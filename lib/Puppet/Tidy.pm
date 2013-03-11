@@ -26,24 +26,48 @@ use vars qw(@ISA @EXPORT $VERSION);
 @ISA    = qw( Exporter );
 @EXPORT = qw( &puppettidy );
 
-$VERSION = '0.3';
+$VERSION = '0.3.1';
 
 my %config = (
-    output_type => 'file',
-    output_ext  => 'tdy',
+    output_type   => 'file',
+    output_ext    => 'tdy',
     output_stream => undef,
-    input_files => undef,
-    input_stream => undef,
-    validate => 0,
+    input_files   => undef,
+    input_stream  => undef,
+    validate      => 0,
+);
+
+# Array of supported checks along with a short description. We cannot use
+# a hash here because we must preserve order.
+my @checks = (
+    {"func"  => \&expand_tabs,
+     "descr" => "Expand tabs"},
+    {"func"  => \&commenting,
+     "descr" => "Commenting"},
+    {"func"  => \&trailing_whitespace,
+     "descr" => "Trailing whitespace"},
+    {"func"  => \&variable_string,
+     "descr" => "Variable string"},
+    {"func"  => \&quotes_resource_ref_type,
+     "descr" => "Resource reference type quoting"},
+    {"func"  => \&quotes_title,
+     "descr" => "Title quoting"},
+    {"func"  => \&quotes_attribute,
+     "descr" => "Attribute quoting"},
+    {"func"  => \&handle_modes,
+     "descr" => "Four digit mode"},
+    {"func"  => \&quoted_booleans,
+     "descr" => "Quoted booleans"},
 );
 
 sub puppettidy(%){
     my %defaults = (
-	argv => undef,
-	source => undef,
+	argv        => undef,
+	source      => undef,
 	destination => undef,
     );
 
+    # Merge arguments over our defaults.
     my %args_hash = @_;
     %args_hash = (%defaults, %args_hash);
 
@@ -74,18 +98,14 @@ sub puppettidy(%){
 	    @input = $config{'input_stream'};
 	}
 
-	expand_tabs(\@input);
-	commenting(\@input);
-	trailing_whitespace(\@input);
-	variable_string(\@input);
-	quotes_resource_ref_type(\@input);
-	quotes_title(\@input);
-	quotes_attribute(\@input);
-	handle_modes(\@input);
-	quoted_booleans(\@input);
+	for (my $c = 0; $c <= $#checks; $c++){
+	    $checks[$c]{"func"}->(\@input);
+	}
 
 	if ($config{'output_type'} eq "file") {
-	    open(OF, ">$file.tdy") or die("Cannot open $file.tdy for writing: $!");
+	    open(OF, ">$file.tdy") or
+		die("Cannot open $file.tdy for writing: $!");
+
 	    foreach my $line (@input)
 	    {
 		print OF $line;
@@ -98,15 +118,26 @@ sub puppettidy(%){
     }
 }
 
+sub list_checks()
+{
+    print("Supported checks:\n");
+    for (my $c = 0; $c <= $#checks; $c++){
+	print("\t" . $checks[$c]{"descr"} . "\n");
+    }
+
+    exit(0);
+}
+
 sub usage()
 {
     print STDERR << "EOF";
 Puppet::Tidy $VERSION
-usage: $0 [-ch] [file ...]
+usage: $0 [-chl] [file ...]
 	-c      : Check/validate the output with "puppet parser validate".
 	-h	: Show this help message.
+	-l	: List supported checks.
 EOF
-    exit 1;
+    exit(1);
 }
 
 sub parse_options(@)
@@ -114,15 +145,16 @@ sub parse_options(@)
     require Getopt::Std;
 
     my %opt;
-    Getopt::Std::getopts('ch', \%opt);
+    Getopt::Std::getopts('chl', \%opt);
 
+    list_checks() if defined($opt{l});
     usage() if defined($opt{h}) or (@ARGV < 1);
 
     if (defined($opt{c})) {
 	# Make sure puppet is installed
 	unless (grep { -x "$_/puppet"}split /:/,$ENV{PATH}) {
 	    print STDERR "Puppet is not installed or cannot be run. Make sure it's in your \$PATH.\n";
-	    exit 127;
+	    exit(127);
 	}
 
 	$config{'validate'} = 1;
@@ -135,7 +167,7 @@ sub parse_options(@)
 	    push(@{$config{'input_files'}}, $f);
 	} else {
 	    print "ERROR: $f is not readable or does not exist.\n";
-	    exit 127;
+	    exit(1);
 	}
     }
 }
@@ -302,7 +334,7 @@ sub quoted_booleans(@)
 	next unless ($line =~ /(\x27|\x22)(false|true)(\x27|\x22)/);
 
 	if ($line =~ /false/) {
-	    ($] < 5.010000) ? $line =~ s/(?>\x0D\x0A|\v)//g : $line =~ s/\R//g;
+	    $line =~ s/\R//g;
 	    $line = $line . " # XXX: Quoted boolean encountered.\n";
 	}
 

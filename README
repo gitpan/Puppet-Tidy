@@ -24,11 +24,15 @@ INSTALLATION
   make
   make install
 
+TESTING
+
+  make test
+
 STATUS
 
-  Beta. This is an initial release with basic functionality. Only a limited
-  number of tests/checks are currently implemented. Both the number of
-  tests/checks and strictness of them will be improved in future versions.
+  Beta. Not early all the functionality I've planned has been
+  implemented yet, along with the fact that Puppet::Tidy could also
+  use a real parser.
 
 SUPPORT
 

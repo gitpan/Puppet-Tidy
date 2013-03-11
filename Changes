@@ -1,3 +1,7 @@
+0.3.1 2013-03-11
+  - Added -l option to list all supported checks.
+  - Code cleanups
+
 0.3 2013-02-09
   - Fix incompatability with Perl < 5.10.0 due lack of \R
   - Add a Changes file.

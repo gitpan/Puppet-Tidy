@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Puppet-Tidy
-version:            0.3
+version:            0.3.1
 abstract:           Tidy up your Puppet manifests
 author:
     - Jasper Lievisse Adriaanse <jasper@mtier.org>
