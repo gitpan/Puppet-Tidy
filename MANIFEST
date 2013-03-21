@@ -16,4 +16,5 @@ t/6_resources.t
 t/7_vars.t
 t/8_booleans.t
 t/bug_83072.t
+t/bug_rt6100.t
 TODO

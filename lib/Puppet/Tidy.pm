@@ -26,7 +26,7 @@ use vars qw(@ISA @EXPORT $VERSION);
 @ISA    = qw( Exporter );
 @EXPORT = qw( &puppettidy );
 
-$VERSION = '0.3.1';
+$VERSION = '0.3.2';
 
 my %config = (
     output_type   => 'file',
@@ -201,7 +201,7 @@ sub trailing_whitespace(@)
     }
 }
 
-# Wuoted strings containing only a variable shouldn't be quoted, also
+# Quoted strings containing only a variable shouldn't be quoted, also
 # single quoted strings containing a variable must be double quoted.
 sub variable_string(@)
 {
@@ -211,6 +211,9 @@ sub variable_string(@)
     {
 	# Skip commented lines.
 	next if (($line eq "\n") or ($line =~ m/^#/));
+
+	# XXX: RT #6100, don't unquote password hashes.
+	next if ($line =~ m/password(\s+)=>/);
 
 	# Remove double quotes around a standalone variable
 	$line =~ s/"\$\{(.*?)\}"/\$\{$1\}/g;
